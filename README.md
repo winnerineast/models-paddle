@@ -1,59 +1,86 @@
-# models 简介
+# Introduction to models
 
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://github.com/PaddlePaddle/models)
 [![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](https://github.com/PaddlePaddle/models)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
-PaddlePaddle提供了丰富的运算单元，帮助大家以模块化的方式构建起千变万化的深度学习模型来解决不同的应用问题。这里，我们针对常见的机器学习任务，提供了不同的神经网络模型供大家学习和使用。
+PaddlePaddle provides a rich set of computational units to enable users to adopt a modular approach to solving various learning problems. In this repo, we demonstrate how to use PaddlePaddle to solve common machine learning tasks, providing several different neural network model that anyone can easily learn and use.
+
+## 1. Word Embedding
+
+The word embedding expresses words with a real vector. Each dimension of the vector represents some of the latent grammatical or semantic features of the text and is one of the most successful concepts in the field of natural language processing. The generalized word vector can also be applied to discrete features. The study of word vector is usually an unsupervised learning. Therefore, it is possible to take full advantage of massive unmarked data to capture the relationship between features and to solve the problem of sparse features, missing tag data, and data noise. However, in the common word vector learning method, the last layer of the model often encounters a large-scale classification problem, which is the bottleneck of computing performance.
+
+In the example of word vectors, we show how to use Hierarchical-Sigmoid and Noise Contrastive Estimation (NCE) to accelerate word-vector learning.
+
+- 1.1 [Hsigmoid Accelerated Word Vector Training](https://github.com/PaddlePaddle/models/tree/develop/hsigmoid)
+- 1.2 [Noise Contrastive Estimation Accelerated Word Vector Training](https://github.com/PaddlePaddle/models/tree/develop/nce_cost)
 
 
-## 1. 词向量
+## 2. RNN language model
 
-词向量用一个实向量表示词语，向量的每个维都表示文本的某种潜在语法或语义特征，是深度学习应用于自然语言处理领域最成功的概念和成果之一。广义的，词向量也可以应用于普通离散特征。词向量的学习通常都是一个无监督的学习过程，因此，可以充分利用海量的无标记数据以捕获特征之间的关系，也可以有效地解决特征稀疏、标签数据缺失、数据噪声等问题。然而，在常见词向量学习方法中，模型最后一层往往会遇到一个超大规模的分类问题，是计算性能的瓶颈。
+The language model is important in the field of natural language processing. In addition to getting the word vector (a by-product of language model training), it can also help us to generate text. Given a number of words, the language model can help us predict the next most likely word. In the example of using the language model to generate text, we focus on the recurrent neural network language model. We can use the instructions in the document quickly adapt to their training corpus, complete automatic writing poetry, automatic writing prose and other interesting models.
 
-在词向量的例子中，我们向大家展示如何使用Hierarchical-Sigmoid 和噪声对比估计（Noise Contrastive Estimation，NCE）来加速词向量的学习。
+- 2.1 [Generate text using the RNN language model](https://github.com/PaddlePaddle/models/tree/develop/generate_sequence_by_rnn_lm)
 
-- 1.1 [Hsigmoid加速词向量训练](https://github.com/PaddlePaddle/models/tree/develop/word_embedding)
+## 3. Click-Through Rate prediction
+The click-through rate model predicts the probability that a user will click on an ad. This is widely used for advertising technology. Logistic Regression has a good learning performance for large-scale sparse features in the early stages of the development of click-through rate prediction. In recent years, DNN model because of its strong learning ability to gradually take the banner rate of the task of the banner.
 
-## 2. 点击率预估
+In the example of click-through rate estimates, we first give the Google's Wide & Deep model. This model combines the advantages of DNN and the applicable logistic regression model for DNN and large-scale sparse features. Then we provide the deep factorization machine for click-through rate prediction. The deep factorization machine combines the factorization machine and deep neural networks to model both low order and high order interactions of input features.
 
-点击率预估模型预判用户对一条广告点击的概率，对每次广告的点击情况做出预测，是广告技术的核心算法之一。逻谛斯克回归对大规模稀疏特征有着很好的学习能力，在点击率预估任务发展的早期一统天下。近年来，DNN 模型由于其强大的学习能力逐渐接过点击率预估任务的大旗。
+- 3.1 [Click-Through Rate Model](https://github.com/PaddlePaddle/models/tree/develop/ctr)
+- 3.2 [Deep Factorization Machine for Click-Through Rate prediction](https://github.com/PaddlePaddle/models/tree/develop/deep_fm)
 
-在点击率预估的例子中，我们给出谷歌提出的 Wide & Deep 模型。这一模型融合了适用于学习抽象特征的 DNN 和适用于大规模稀疏特征的逻谛斯克回归两者模型的优点，可以作为一种相对成熟的模型框架使用， 在工业界也有一定的应用。
+## 4. Text classification
 
-- 2.1 [Wide & deep 点击率预估模型](https://github.com/PaddlePaddle/models/tree/develop/ctr)
+Text classification is one of the most basic tasks in natural language processing. The deep learning method can eliminate the complex feature engineering, and use the original text as input to optimize the classification accuracy.
 
-## 3. 文本分类
+For text classification, we provide a non-sequential text classification model based on DNN and CNN. (For LSTM-based model, please refer to PaddleBook [Sentiment Analysis](http://www.paddlepaddle.org/docs/develop/book/06.understand_sentiment/index.html)).
 
-文本分类是自然语言处理领域最基础的任务之一，深度学习方法能够免除复杂的特征工程，直接使用原始文本作为输入，数据驱动地最优化分类准确率。
+- 4.1 [Sentiment analysis based on DNN / CNN](https://github.com/PaddlePaddle/models/tree/develop/text_classification)
 
-在文本分类的例子中，我们以情感分类任务为例，提供了基于DNN的非序列文本分类模型，以及基于CNN的序列模型供大家学习和使用（基于LSTM的模型见PaddleBook中[情感分类](https://github.com/PaddlePaddle/book/blob/develop/06.understand_sentiment/README.cn.md)一课）。
+## 5. Learning to rank
 
-- 3.1 [基于 DNN / CNN 的情感分类](https://github.com/PaddlePaddle/models/tree/develop/text_classification)
+Learning to rank (LTR) is one of the core problems in information retrieval and search engine research. Training data is used by a learning algorithm to produce a ranking model which computes the relevance of documents for actual queries.
+The depth neural network can be used to model the fractional function to form various LTR models based on depth learning.
 
-## 4. 排序学习
+The algorithms for learning to rank are usually categorized into three groups by their input representation and the loss function. These are pointwise, pairwise and listwise approaches. Here we demonstrate RankLoss loss function method (pairwise approach), and LambdaRank loss function method (listwise approach). (For Pointwise approaches, please refer to [Recommended System](http://www.paddlepaddle.org/docs/develop/book/05.recommender_system/index.html)).
 
-排序学习(Learning to Rank， LTR)是信息检索和搜索引擎研究的核心问题之一，通过机器学习方法学习一个分值函数对待排序的候选进行打分，再根据分值的高低确定序关系。深度神经网络可以用来建模分值函数，构成各类基于深度学习的LTR模型。
+- 5.1 [Learning to rank based on Pairwise and Listwise approches](https://github.com/PaddlePaddle/models/tree/develop/ltr)
 
-在排序学习的例子中，我们介绍基于 RankLoss 损失函数的 Pairwise 排序模型和基于LambdaRank损失函数的Listwise排序模型(Pointwise学习策略见PaddleBook中[推荐系统](https://github.com/PaddlePaddle/book/blob/develop/05.recommender_system/README.cn.md)一课）。
+## 6. Semantic model
+The deep structured semantic model uses the DNN model to learn the vector representation of the low latitude in a continuous semantic space, finally models the semantic similarity between the two sentences.
 
-- 4.1 [基于 Pairwise 和 Listwise 的排序学习](https://github.com/PaddlePaddle/models/tree/develop/ltr)
+In this example, we demonstrate how to use PaddlePaddle to implement a generic deep structured semantic model to model the semantic similarity between two strings. The model supports different network structures such as CNN (Convolutional Network), FC (Fully Connected Network), RNN (Recurrent Neural Network), and different loss functions such as classification, regression, and sequencing.
 
-## 5. 序列标注
+- 6.1 [Deep structured semantic model](https://github.com/PaddlePaddle/models/tree/develop/dssm)
 
-给定输入序列，序列标注模型为序列中每一个元素贴上一个类别标签，是自然语言处理领域最基础的任务之一。随着深度学习的不断探索和发展，利用循环神经网络学习输入序列的特征表示，条件随机场（Conditional Random Field, CRF）在特征基础上完成序列标注任务，逐渐成为解决序列标注问题的标配解决方案。
+## 7. Sequence tagging
 
-在序列标注的例子中，我们以命名实体识别（Named Entity Recognition，NER）任务为例，介绍如何训练一个端到端的序列标注模型。
+Given the input sequence, the sequence tagging model is one of the most basic tasks in the natural language processing by assigning a category tag to each element in the sequence. Recurrent neural network models with Conditional Random Field (CRF) are commonly used for sequence tagging tasks.
 
-- 5.1 [命名实体识别](https://github.com/PaddlePaddle/models/tree/develop/sequence_tagging_for_ner)
+In the example of the sequence tagging, we describe how to train an end-to-end sequence tagging model with the Named Entity Recognition (NER) task as an example.
 
-## 6. 序列到序列学习
+- 7.1 [Name Entity Recognition](https://github.com/PaddlePaddle/models/tree/develop/sequence_tagging_for_ner)
 
-序列到序列学习实现两个甚至是多个不定长模型之间的映射，有着广泛的应用，包括：机器翻译、智能对话与问答、广告创意语料生成、自动编码（如金融画像编码）、判断多个文本串之间的语义相关性等。
+## 8. Sequence to sequence learning
 
-在序列到序列学习的例子中，我们以机器翻译任务为例，提供了多种改进模型，供大家学习和使用。包括：不带注意力机制的序列到序列映射模型，这一模型是所有序列到序列学习模型的基础；使用 scheduled sampling 改善 RNN 模型在生成任务中的错误累积问题；带外部记忆机制的神经机器翻译，通过增强神经网络的记忆能力，来完成复杂的序列到序列学习任务。
+Sequence-to-sequence model has a wide range of applications. This includes machine translation, dialogue system, and parse tree generation.
 
-- 6.1 [无注意力机制的编码器解码器模型](https://github.com/PaddlePaddle/models/tree/develop/nmt_without_attention)
+As an example for sequence-to-sequence learning, we take the machine translation task. We demonstrate the sequence-to-sequence mapping model without attention mechanism, which is the basis for all sequence-to-sequence learning models. We will use scheduled sampling to improve the problem of error accumulation in the RNN model, and machine translation with external memory mechanism.
 
-## Copyright and License
-PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
+- 8.1 [Basic Sequence-to-sequence model](https://github.com/PaddlePaddle/models/tree/develop/nmt_without_attention)
+
+## 9. Image classification
+
+For the example of image classification, we show you how to train AlexNet, VGG, GoogLeNet, ResNet, Inception-v4, Inception-Resnet-V2 and Xception models in PaddlePaddle. It also provides model conversion tools that convert Caffe or TensorFlow trained model files into PaddlePaddle model files.
+
+- 9.1 [convert Caffe model file to PaddlePaddle model file](https://github.com/PaddlePaddle/models/tree/develop/image_classification/caffe2paddle)
+- 9.2 [convert TensorFlow model file to PaddlePaddle model file](https://github.com/PaddlePaddle/models/tree/develop/image_classification/tf2paddle)
+- 9.3 [AlexNet](https://github.com/PaddlePaddle/models/tree/develop/image_classification)
+- 9.4 [VGG](https://github.com/PaddlePaddle/models/tree/develop/image_classification)
+- 9.5 [Residual Network](https://github.com/PaddlePaddle/models/tree/develop/image_classification)
+- 9.6 [Inception-v4](https://github.com/PaddlePaddle/models/tree/develop/image_classification)
+- 9.7 [Inception-Resnet-V2](https://github.com/PaddlePaddle/models/tree/develop/image_classification)
+- 9.8 [Xception](https://github.com/PaddlePaddle/models/tree/develop/image_classification)
+
+This tutorial is contributed by [PaddlePaddle](https://github.com/PaddlePaddle/Paddle) and licensed under the [Apache-2.0 license](LICENSE).

@@ -1,113 +1,151 @@
-# 点击率预估
+# Click-Through Rate Prediction
 
-## 背景介绍
+## Introduction
 
-CTR(Click-Through Rate，点击率预估)\[[1](https://en.wikipedia.org/wiki/Click-through_rate)\] 是用来表示用户点击一个特定链接的概率，
-通常被用来衡量一个在线广告系统的有效性。
+CTR(Click-Through Rate)\[[1](https://en.wikipedia.org/wiki/Click-through_rate)\]
+is a prediction of the probability that a user clicks on an advertisement. This model is widely used in the advertisement industry. Accurate click rate estimates are important for maximizing online advertising revenue.
 
-当有多个广告位时，CTR 预估一般会作为排序的基准。
-比如在搜索引擎的广告系统里，当用户输入一个带商业价值的搜索词（query）时，系统大体上会执行下列步骤来展示广告：
+When there are multiple ad slots, CTR estimates are generally used as a baseline for ranking. For example, in a search engine's ad system, when the user enters a query, the system typically performs the following steps to show relevant ads.
 
-1.  召回满足 query 的广告集合
-2.  业务规则和相关性过滤
-3.  根据拍卖机制和 CTR 排序
-4.  展出广告
+1.  Get the ad collection associated with the user's search term.
+2.  Business rules and relevance filtering.
+3.  Rank by auction mechanism and CTR.
+4.  Show ads.
 
-可以看到，CTR 在最终排序中起到了很重要的作用。
+Here，CTR plays a crucial role.
 
-### 发展阶段
-在业内，CTR 模型经历了如下的发展阶段：
+### Brief history
+Historically, the CTR prediction model has been evolving as follows.
 
--   Logistic Regression(LR) / GBDT + 特征工程
--   LR + DNN 特征
--   DNN + 特征工程
+-   Logistic Regression(LR) / Gradient Boosting Decision Trees (GBDT) + feature engineering
+-   LR + Deep Neural Network (DNN)
+-   DNN + feature engineering
 
-在发展早期时 LR 一统天下，但最近 DNN 模型由于其强大的学习能力和逐渐成熟的性能优化，
-逐渐地接过 CTR 预估任务的大旗。
+In the early stages of development LR dominated, but the recent years DNN based models are mainly used.
 
 
 ### LR vs DNN
 
-下图展示了 LR 和一个 \(3x2\) 的 DNN 模型的结构：
+The following figure shows the structure of LR and DNN model:
 
 <p align="center">
 <img src="images/lr_vs_dnn.jpg" width="620" hspace='10'/> <br/>
-Figure 1. LR 和 DNN 模型结构对比
+Figure 1.  LR and DNN model structure comparison
 </p>
 
-LR 的蓝色箭头部分可以直接类比到 DNN 中对应的结构，可以看到 LR 和 DNN 有一些共通之处（比如权重累加），
-但前者的模型复杂度在相同输入维度下比后者可能低很多（从某方面讲，模型越复杂，越有潜力学习到更复杂的信息）。
+We can see, LR and CNN have some common structures. However, DNN can have non-linear relation between input and output values by adding activation unit and further layers. This enables DNN to achieve better learning results in CTR estimates.
 
-如果 LR 要达到匹敌 DNN 的学习能力，必须增加输入的维度，也就是增加特征的数量，
-这也就是为何 LR 和大规模的特征工程必须绑定在一起的原因。
+In the following, we demonstrate how to use PaddlePaddle to learn to predict CTR.
 
-LR 对于 DNN 模型的优势是对大规模稀疏特征的容纳能力，包括内存和计算量等方面，工业界都有非常成熟的优化方法。
+## Data and Model formation
 
-而 DNN 模型具有自己学习新特征的能力，一定程度上能够提升特征使用的效率，
-这使得 DNN 模型在同样规模特征的情况下，更有可能达到更好的学习效果。
+Here `click` is the learning objective. There are several ways to learn the objectives.
 
-本文后面的章节会演示如何使用 PaddlePaddle 编写一个结合两者优点的模型。
+1.  Direct learning click, 0,1 for binary classification
+2.  Learning to rank, pairwise rank or listwise rank
+3.  Measure the ad click rate of each ad, then rank by the click rate.
 
+In this example, we use the first method.
 
-## 数据和任务抽象
+We use the Kaggle `Click-through rate prediction` task \[[2](https://www.kaggle.com/c/avazu-ctr-prediction/data)\].
 
-我们可以将 `click` 作为学习目标，任务可以有以下几种方案：
+Please see the [data process](./dataset.md) for pre-processing data.
 
-1.  直接学习 click，0,1 作二元分类
-2.  Learning to rank, 具体用 pairwise rank（标签 1>0）或者 listwise rank
-3.  统计每个广告的点击率，将同一个 query 下的广告两两组合，点击率高的>点击率低的，做 rank 或者分类
+The input data format for the demo model in this tutorial is as follows:
 
-我们直接使用第一种方法做分类任务。
+```
+# <dnn input ids> \t <lr input sparse values> \t click
+1 23 190 \t 230:0.12 3421:0.9 23451:0.12 \t 0
+23 231 \t 1230:0.12 13421:0.9 \t 1
+```
 
-我们使用 Kaggle 上 `Click-through rate prediction` 任务的数据集\[[2](https://www.kaggle.com/c/avazu-ctr-prediction/data)\] 来演示模型。
+Description：
 
-具体的特征处理方法参看 [data process](./dataset.md)
+- `dnn input ids` one-hot coding.
+- `lr input sparse values` Use `ID:VALUE` , values are preferaly scaled to the range `[-1, 1]`。
 
+此外，模型训练时需要传入一个文件描述 dnn 和 lr两个子模型的输入维度，文件的格式如下：
+
+```
+dnn_input_dim: <int>
+lr_input_dim: <int>
+```
+
+<int> represents an integer value.
+
+`avazu_data_processor.py` can be used to download the data set \[[2](#参考文档)\]and pre-process the data.
+
+```
+usage: avazu_data_processer.py [-h] --data_path DATA_PATH --output_dir
+                               OUTPUT_DIR
+                               [--num_lines_to_detect NUM_LINES_TO_DETECT]
+                               [--test_set_size TEST_SET_SIZE]
+                               [--train_size TRAIN_SIZE]
+
+PaddlePaddle CTR example
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --data_path DATA_PATH
+                        path of the Avazu dataset
+  --output_dir OUTPUT_DIR
+                        directory to output
+  --num_lines_to_detect NUM_LINES_TO_DETECT
+                        number of records to detect dataset's meta info
+  --test_set_size TEST_SET_SIZE
+                        size of the validation dataset(default: 10000)
+  --train_size TRAIN_SIZE
+                        size of the trainset (default: 100000)
+```
+
+- `data_path` The data path to be processed
+- `output_dir` The output path of the data
+- `num_lines_to_detect` The number of generated IDs
+- `test_set_size` The number of rows for the test set
+- `train_size` The number of rows of training set
 
 ## Wide & Deep Learning Model
 
-谷歌在 16 年提出了 Wide & Deep Learning 的模型框架，用于融合适合学习抽象特征的 DNN 和 适用于大规模稀疏特征的 LR 两种模型的优点。
+Google proposed a model framework for Wide & Deep Learning to integrate the advantages of both DNNs suitable for learning abstract features and LR models for large sparse features.
 
 
-### 模型简介
+### Introduction to the model
 
-Wide & Deep Learning Model\[[3](#参考文献)\] 可以作为一种相对成熟的模型框架使用，
-在 CTR 预估的任务中工业界也有一定的应用，因此本文将演示使用此模型来完成 CTR 预估的任务。
+Wide & Deep Learning Model\[[3](#References)\] is a relatively mature model, but this model is still being used in the CTR predicting task. Here we demonstrate the use of this model to complete the CTR predicting task.
 
-模型结构如下：
+The model structure is as follows:
 
 <p align="center">
 <img src="images/wide_deep.png" width="820" hspace='10'/> <br/>
 Figure 2. Wide & Deep Model
 </p>
 
-模型左边的 Wide 部分，可以容纳大规模系数特征，并且对一些特定的信息（比如 ID）有一定的记忆能力；
-而模型右边的 Deep 部分，能够学习特征间的隐含关系，在相同数量的特征下有更好的学习和推导能力。
+The wide part of the top side of the model can accommodate large-scale coefficient features and has some memory for some specific information (such as ID); and the Deep part of the bottom side of the model can learn the implicit relationship between features.
 
 
-### 编写模型输入
+### Model Input
 
-模型只接受 3 个输入，分别是
+The model has three inputs as follows.
 
--   `dnn_input` ，也就是 Deep 部分的输入
--   `lr_input` ，也就是 Wide 部分的输入
--   `click` ， 点击与否，作为二分类模型学习的标签
+-   `dnn_input` ，the Deep part of the input
+-   `lr_input` ，the wide part of the input
+-   `click` ， click on or not
 
 ```python
 dnn_merged_input = layer.data(
     name='dnn_input',
-    type=paddle.data_type.sparse_binary_vector(data_meta_info['dnn_input']))
+    type=paddle.data_type.sparse_binary_vector(self.dnn_input_dim))
 
 lr_merged_input = layer.data(
     name='lr_input',
-    type=paddle.data_type.sparse_binary_vector(data_meta_info['lr_input']))
+    type=paddle.data_type.sparse_vector(self.lr_input_dim))
 
 click = paddle.layer.data(name='click', type=dtype.dense_vector(1))
 ```
 
-### 编写 Wide 部分
+### Wide part
 
-Wide 部分直接使用了 LR 模型，但激活函数改成了 `RELU` 来加速
+Wide part uses of the LR model, but the activation function changed to `RELU` for speed.
 
 ```python
 def build_lr_submodel():
@@ -116,9 +154,9 @@ def build_lr_submodel():
     return fc
 ```
 
-### 编写 Deep 部分
+### Deep part
 
-Deep 部分使用了标准的多层前向传导的 DNN 模型
+The Deep part uses a standard multi-layer DNN.
 
 ```python
 def build_dnn_submodel(dnn_layer_dims):
@@ -134,10 +172,9 @@ def build_dnn_submodel(dnn_layer_dims):
     return _input_layer
 ```
 
-### 两者融合
+### Combine
 
-两个 submodel 的最上层输出加权求和得到整个模型的输出，输出部分使用 `sigmoid` 作为激活函数，得到区间 (0,1) 的预测值，
-来逼近训练数据中二元类别的分布，并最终作为 CTR 预估的值使用。
+The output section uses `sigmoid` function to output (0,1) as the prediction value.
 
 ```python
 # conbine DNN and LR submodels
@@ -152,7 +189,7 @@ def combine_submodels(dnn, lr):
     return fc
 ```
 
-### 训练任务的定义
+### Training
 ```python
 dnn = build_dnn_submodel(dnn_layer_dims)
 lr = build_lr_submodel()
@@ -198,21 +235,24 @@ trainer.train(
     event_handler=event_handler,
     num_passes=100)
 ```
-## 运行训练和测试
-训练模型需要如下步骤：
 
-1. 下载训练数据，可以使用 Kaggle 上 CTR 比赛的数据\[[2](#参考文献)\]
-    1. 从 [Kaggle CTR](https://www.kaggle.com/c/avazu-ctr-prediction/data) 下载 train.gz
-    2. 解压 train.gz 得到 train.txt
-2. 执行 `python train.py --train_data_path train.txt` ，开始训练
+## Run training and testing
+The model go through the following steps:
 
-上面第2个步骤可以为 `train.py` 填充命令行参数来定制模型的训练过程，具体的命令行参数及用法如下
+1. Prepare training data
+    1. Download train.gz from [Kaggle CTR](https://www.kaggle.com/c/avazu-ctr-prediction/data) .
+    2. Unzip train.gz to get train.txt
+    3. `mkdir -p output; python avazu_data_processer.py --data_path train.txt --output_dir output --num_lines_to_detect 1000 --test_set_size 100` 生成演示数据
+2. Execute `python train.py --train_data_path ./output/train.txt --test_data_path ./output/test.txt --data_meta_file ./output/data.meta.txt --model_type=0`. Start training.
+
+The argument options for `train.py` are as follows.
 
 ```
 usage: train.py [-h] --train_data_path TRAIN_DATA_PATH
-                [--batch_size BATCH_SIZE] [--test_set_size TEST_SET_SIZE]
+                [--test_data_path TEST_DATA_PATH] [--batch_size BATCH_SIZE]
                 [--num_passes NUM_PASSES]
-                [--num_lines_to_detact NUM_LINES_TO_DETACT]
+                [--model_output_prefix MODEL_OUTPUT_PREFIX] --data_meta_file
+                DATA_META_FILE --model_type MODEL_TYPE
 
 PaddlePaddle CTR example
 
@@ -220,17 +260,80 @@ optional arguments:
   -h, --help            show this help message and exit
   --train_data_path TRAIN_DATA_PATH
                         path of training dataset
+  --test_data_path TEST_DATA_PATH
+                        path of testing dataset
   --batch_size BATCH_SIZE
                         size of mini-batch (default:10000)
-  --test_set_size TEST_SET_SIZE
-                        size of the validation dataset(default: 10000)
   --num_passes NUM_PASSES
                         number of passes to train
-  --num_lines_to_detact NUM_LINES_TO_DETACT
-                        number of records to detect dataset's meta info
+  --model_output_prefix MODEL_OUTPUT_PREFIX
+                        prefix of path for model to store (default:
+                        ./ctr_models)
+  --data_meta_file DATA_META_FILE
+                        path of data meta info file
+  --model_type MODEL_TYPE
+                        model type, classification: 0, regression 1 (default
+                        classification)
 ```
 
-## 参考文献
+- `train_data_path` ：  The path of the training set
+- `test_data_path` : The path of the testing set
+- `num_passes`: number of rounds of model training
+- `data_meta_file`: Please refer to [数据和任务抽象](### 数据和任务抽象)的描述。
+- `model_type`:  Model classification or regressio
+
+
+## Use the training model for prediction
+The training model can be used to predict new data, and the format of the forecast data is as follows.
+
+
+```
+# <dnn input ids> \t <lr input sparse values>
+1 23 190 \t 230:0.12 3421:0.9 23451:0.12
+23 231 \t 1230:0.12 13421:0.9
+```
+
+Here the only difference to the training data is that there is no label (i.e. `click` values).
+
+We now can use `infer.py` to perform inference.
+
+```
+usage: infer.py [-h] --model_gz_path MODEL_GZ_PATH --data_path DATA_PATH
+                --prediction_output_path PREDICTION_OUTPUT_PATH
+                [--data_meta_path DATA_META_PATH] --model_type MODEL_TYPE
+
+PaddlePaddle CTR example
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --model_gz_path MODEL_GZ_PATH
+                        path of model parameters gz file
+  --data_path DATA_PATH
+                        path of the dataset to infer
+  --prediction_output_path PREDICTION_OUTPUT_PATH
+                        path to output the prediction
+  --data_meta_path DATA_META_PATH
+                        path of trainset's meta info, default is ./data.meta
+  --model_type MODEL_TYPE
+                        model type, classification: 0, regression 1 (default
+                        classification)
+```
+
+- `model_gz_path_model`：path for `gz` compressed data.
+- `data_path` ：
+- `prediction_output_patj`：path for the predicted values s
+- `data_meta_file` ：Please refer to [数据和任务抽象](### 数据和任务抽象)。
+- `model_type` ：Classification or regression
+
+The sample data can be predicted with the following command
+
+```
+python infer.py --model_gz_path <model_path> --data_path output/infer.txt --prediction_output_path predictions.txt --data_meta_path data.meta.txt
+```
+
+The final prediction is written in  `predictions.txt`。
+
+## References
 1. <https://en.wikipedia.org/wiki/Click-through_rate>
 2. <https://www.kaggle.com/c/avazu-ctr-prediction/data>
 3. Cheng H T, Koc L, Harmsen J, et al. [Wide & deep learning for recommender systems](https://arxiv.org/pdf/1606.07792.pdf)[C]//Proceedings of the 1st Workshop on Deep Learning for Recommender Systems. ACM, 2016: 7-10.
