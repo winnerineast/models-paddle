@@ -7,13 +7,13 @@ import numpy as np
 import argparse
 import time
 
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.profiler as profiler
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
 import _init_paths
 import data_utils.augmentor.trans_mean_variance_norm as trans_mean_variance_norm
 import data_utils.augmentor.trans_add_delta as trans_add_delta
 import data_utils.augmentor.trans_splice as trans_splice
-import data_utils.data_reader as reader
+import data_utils.async_data_reader as reader
 from model_utils.model import stacked_lstmp_model
 from data_utils.util import lodtensor_to_ndarray
 
@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument(
         '--learning_rate',
         type=float,
-        default=0.002,
+        default=0.00016,
         help='Learning rate used to train. (default: %(default)f)')
     parser.add_argument(
         '--device',
@@ -125,8 +125,7 @@ def profile(args):
         class_num=1749,
         parallel=args.parallel)
 
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=args.learning_rate, momentum=0.9)
+    optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
     optimizer.minimize(avg_cost)
 
     place = fluid.CPUPlace() if args.device == 'CPU' else fluid.CUDAPlace(0)
@@ -139,7 +138,7 @@ def profile(args):
         trans_splice.TransSplice()
     ]
 
-    data_reader = reader.DataReader(args.feature_lst, args.label_lst)
+    data_reader = reader.AsyncDataReader(args.feature_lst, args.label_lst)
     data_reader.set_transformers(ltrans)
 
     feature_t = fluid.LoDTensor()
@@ -159,17 +158,20 @@ def profile(args):
                 frames_seen = 0
             # load_data
             (features, labels, lod) = batch_data
-            feature_t.set(features, place)
-            feature_t.set_lod([lod])
-            label_t.set(labels, place)
-            label_t.set_lod([lod])
+            feature_t.set(features.ndarray, place)
+            feature_t.set_lod([lod.ndarray])
+            label_t.set(labels.ndarray, place)
+            label_t.set_lod([lod.ndarray])
 
-            frames_seen += lod[-1]
+            frames_seen += lod.ndarray[-1]
+
+            data_reader.recycle(features, labels, lod)
 
             outs = exe.run(fluid.default_main_program(),
                            feed={"feature": feature_t,
                                  "label": label_t},
-                           fetch_list=[avg_cost, accuracy],
+                           fetch_list=[avg_cost, accuracy]
+                           if args.print_train_acc else [],
                            return_numpy=False)
 
             if args.print_train_acc:
